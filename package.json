@@ -1,0 +1,41 @@
+{
+  "name": "litx-router",
+  "version": "1.0.0",
+  "description": "Web Components Router",
+  "main": "index.js",
+  "module": "index.js",
+  "scripts": {
+    "dev": "es-dev-server -w -n --open test/index.html",
+    "lint": "eslint ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reekoheek/litx-router.git"
+  },
+  "keywords": [
+    "router",
+    "webcomponents"
+  ],
+  "author": "Ganesha <reekoheek@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/reekoheek/litx-router/issues"
+  },
+  "homepage": "https://github.com/reekoheek/litx-router#readme",
+  "devDependencies": {
+    "@open-wc/testing": "^2.5.4",
+    "babel-eslint": "^10.1.0",
+    "es-dev-server": "^1.42.1",
+    "eslint": "^6.8.0",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-config-xinix": "^1.1.9",
+    "eslint-plugin-import": "^2.20.1",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "mocha": "^7.1.0"
+  },
+  "dependencies": {
+    "lit-element": "^2.2.1"
+  }
+}
