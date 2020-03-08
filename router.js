@@ -1,16 +1,22 @@
-import { LitElement } from 'lit-element';
 import { Context } from './context';
 import { Route } from './route';
 import { compose } from './compose';
 
-export class Router extends LitElement {
-  static get properties () {
-    return {
-      loaders: { type: Array },
-      mode: { type: String },
-      hash: { type: String },
-      root: { type: String },
-      manual: { type: Boolean },
+let OPTIONS = {
+  debug: false,
+};
+
+function debug (...args) {
+  if (OPTIONS.debug) {
+    console.info(...args);
+  }
+}
+
+export class Router extends HTMLElement {
+  static reset (options) {
+    OPTIONS = {
+      debug: false,
+      options,
     };
   }
 
@@ -30,15 +36,16 @@ export class Router extends LitElement {
   }
 
   async connectedCallback () {
-    super.connectedCallback();
-
+    this.mode = this.getAttribute('mode') || this.mode;
+    this.hash = this.getAttribute('hash') || this.hash;
+    this.root = this.getAttribute('root') || this.root;
+    this.manual = this.hasAttribute('manual');
     if (!this.manual) {
       await this.start();
     }
   }
 
   disconnectedCallback () {
-    super.disconnectedCallback();
     this.stop();
   }
 
@@ -138,7 +145,7 @@ export class Router extends LitElement {
 
     ctx = ctx.shift(this);
 
-    console.info(`Dispatching ${this.nodeName} with ctx: %O`, ctx);
+    debug(`Dispatching ${this.nodeName} with ctx: %O`, ctx);
     await this.middlewareChain(ctx, async () => {
       await this.route(ctx);
     });
@@ -169,7 +176,7 @@ export class Router extends LitElement {
   }
 
   async push (uri, data) {
-    console.info(`Push ${this.nodeName} %s`, uri);
+    debug(`Push ${this.nodeName} %s`, uri);
 
     if (this.currentUri === uri) {
       return;
@@ -184,7 +191,7 @@ export class Router extends LitElement {
   }
 
   async replace (uri, data) {
-    console.info(`Replace ${this.nodeName} %s`, uri);
+    debug(`Replace ${this.nodeName} %s`, uri);
 
     if (this.currentUri === uri) {
       return;
