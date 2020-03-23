@@ -2,28 +2,15 @@ import { Context } from './context';
 import { Route } from './route';
 import { compose } from './compose';
 
-let OPTIONS = {
-  debug: false,
-};
-
-function debug (...args) {
-  if (OPTIONS.debug) {
-    console.info(...args);
-  }
-}
+const kListener = Symbol('listener');
 
 export class Router extends HTMLElement {
-  static reset (options) {
-    OPTIONS = {
-      debug: false,
-      options,
-    };
-  }
-
   constructor () {
     super();
 
     this.loaders = [];
+    this.started = false;
+    this.debug = false;
     this.mode = 'hash';
     this.hash = '#!';
     this.root = '/';
@@ -36,10 +23,12 @@ export class Router extends HTMLElement {
   }
 
   async connectedCallback () {
+    this.debug = this.hasAttribute('debug');
     this.mode = this.getAttribute('mode') || this.mode;
     this.hash = this.getAttribute('hash') || this.hash;
     this.root = this.getAttribute('root') || this.root;
     this.manual = this.hasAttribute('manual');
+
     if (!this.manual) {
       await this.start();
     }
@@ -67,13 +56,18 @@ export class Router extends HTMLElement {
 
       return '/' + uri.toString().replace(/\/$/, '').replace(/^\//, '');
     } catch (err) {
-      console.error('Fragment is not match any pattern, fallback to /');
-      console.error(err);
+      console.error('Fragment is not match any pattern, fallback to /\n', err);
       return '/';
     }
   }
 
   async start () {
+    if (this.started) {
+      throw new Error('Router already started');
+    }
+
+    this.started = true;
+
     this.setupRoutes();
     this.setupMiddlewares();
     this.setupListener();
@@ -83,6 +77,8 @@ export class Router extends HTMLElement {
   }
 
   stop () {
+    this.started = false;
+
     this.teardownListener();
     this.teardownMiddlewares();
     this.teardownRoutes();
@@ -125,27 +121,27 @@ export class Router extends HTMLElement {
   }
 
   setupListener () {
-    this.listener = async () => {
+    this[kListener] = async (evt) => {
       const uri = this.getUri(this.location);
-      await this.dispatch(new Context({ uri }));
+      await this.dispatch(new Context({ uri, state: evt.state }));
     };
 
-    window.addEventListener('popstate', this.listener);
+    window.addEventListener('popstate', this[kListener]);
   }
 
   teardownListener () {
-    if (this.listener) {
-      window.removeEventListener('popstate', this.listener);
-      this.listener = undefined;
+    if (this[kListener]) {
+      window.removeEventListener('popstate', this[kListener]);
+      this[kListener] = undefined;
     }
   }
 
   async dispatch (ctx) {
     this.currentUri = ctx.uri;
 
-    ctx = ctx.shift(this);
+    // ctx = ctx.shift(this);
 
-    debug(`Dispatching ${this.nodeName} with ctx: %O`, ctx);
+    /* istanbul ignore if  */ if (this.debug) console.info(`Dispatching ${this.nodeName} with ctx: %O`, ctx);
     await this.middlewareChain(ctx, async () => {
       await this.route(ctx);
     });
@@ -175,37 +171,31 @@ export class Router extends HTMLElement {
     ]);
   }
 
-  async push (uri, data) {
-    debug(`Push ${this.nodeName} %s`, uri);
-
+  async push (uri, state) {
     if (this.currentUri === uri) {
       return;
     }
 
-    const url = this.mode === 'history'
-      ? this.rootUri + uri.toString().replace(/\/$/, '').replace(/^\//, '')
-      : this.hash + (uri === '/' ? '' : uri);
+    /* istanbul ignore if  */ if (this.debug) console.info(`Push ${this.nodeName} %s`, uri);
 
-    this.history.pushState(data, document.title, url);
-    await this.dispatch(new Context({ uri, data }));
+    this.history.pushState(state, document.title, this.uriToUrl(uri));
+    await this.dispatch(new Context({ uri, state }));
   }
 
-  async replace (uri, data) {
-    debug(`Replace ${this.nodeName} %s`, uri);
-
+  async replace (uri, state) {
     if (this.currentUri === uri) {
       return;
     }
 
-    const url = this.mode === 'history'
-      ? this.rootUri + uri.toString().replace(/\/$/, '').replace(/^\//, '')
-      : this.hash + uri;
+    /* istanbul ignore if  */ if (this.debug) console.info(`Replace ${this.nodeName} %s`, uri);
 
-    this.history.replaceState(data, document.title, url);
-    await this.dispatch(new Context({ uri, data }));
+    this.history.replaceState(state, document.title, this.uriToUrl(uri));
+    await this.dispatch(new Context({ uri, state }));
   }
 
   async pop () {
+    /* istanbul ignore if  */ if (this.debug) console.info(`Pop ${this.nodeName}`);
+
     await this.go(-1);
   }
 
@@ -234,6 +224,12 @@ export class Router extends HTMLElement {
         await loader.load(view);
       }
     }
+  }
+
+  uriToUrl (uri) {
+    return this.mode === 'history'
+      ? this.root + uri.toString().replace(/\/$/, '').replace(/^\//, '')
+      : this.hash + uri;
   }
 }
 

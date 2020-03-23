@@ -13,7 +13,7 @@ export class Context {
       this._setUri(ctx.uri);
     }
 
-    this.data = { ...ctx.data };
+    this.state = { ...ctx.state };
     this.parameters = { ...ctx.parameters };
   }
 
@@ -29,20 +29,20 @@ export class Context {
     this.query = parse(search);
   }
 
-  withUri (uri) {
-    const ctx = new Context(this);
-    ctx._setUri(uri);
-    return ctx;
-  }
+  // withUri (uri) {
+  //   const ctx = new Context(this);
+  //   ctx._setUri(uri);
+  //   return ctx;
+  // }
 
-  shift (router) {
-    const { uri } = this;
-    if (!uri.startsWith(router.root)) {
-      throw new Error(`Context not eligible for ${router.nodeName} with root:${router.root}`);
-    }
+  // shift (router) {
+  //   const { uri } = this;
+  //   if (!uri.startsWith(router.root)) {
+  //     throw new Error(`Context not eligible for ${router.nodeName} with root:${router.root}`);
+  //   }
 
-    return this.withUri(router.root === '/' ? uri : uri.substr(router.root.length));
-  }
+  //   return this.withUri(router.root === '/' ? uri : uri.substr(router.root.length));
+  // }
 
   /**
    * Copy context for specific route

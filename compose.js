@@ -1,9 +1,11 @@
 export function compose (middlewares) {
-  for (const fn of middlewares) {
+  middlewares = middlewares.map(fn => {
     if (typeof fn !== 'function') {
       throw new TypeError('Middleware must be composed of functions!');
     }
-  }
+
+    return fn;
+  });
 
   return (context, next) => {
     // last called middlewares #
@@ -19,9 +21,10 @@ export function compose (middlewares) {
       if (i === middlewares.length) {
         fn = next;
       }
-      if (!fn) {
-        return;
-      }
+
+      // if (!fn) {
+      //   return;
+      // }
 
       return fn(context, () => dispatch(i + 1));
     }

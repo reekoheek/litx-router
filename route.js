@@ -37,7 +37,9 @@ export class Route {
   }
 
   test (uri) {
-    return (this.type === 's' && this.uri === uri) || (this.type === 'v' && uri.match(this.pattern));
+    return (this.uri === '*') ||
+      (this.type === 's' && this.uri === uri) ||
+      (this.type === 'v' && uri.match(this.pattern));
   }
 
   async enter (ctx) {
