@@ -143,6 +143,28 @@ describe('Router', () => {
       assert.deepStrictEqual(logs, ['1', '2', '3']);
     });
 
+    it('parse query from uri', async () => {
+      const logs = [];
+      const ceLocal = defineCE(class extends HTMLElement {
+        connectedCallback () {
+          logs.push(this.ctx.query);
+        }
+      });
+
+      const router = await fixture(html`
+        <litx-router manual>
+          <litx-route uri="/" view="${ce1}"></litx-route>
+          <litx-route uri="/foo/{bar}" view="${ceLocal}"></litx-route>
+        </litx-router>
+      `);
+
+      await router.start();
+      await router.push('/foo/1?a=1');
+      await router.push('/foo/1?b=2');
+
+      assert.deepStrictEqual(logs, [{ a: '1' }, { b: '2' }]);
+    });
+
     it('set loaders to lazy load views', async () => {
       const router = await fixture(html`
         <litx-router manual>

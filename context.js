@@ -59,6 +59,10 @@ export class Context {
 }
 
 function parse (search) {
+  if (!search) {
+    return {};
+  }
+
   const query = {};
 
   search.split('&').forEach(token => {

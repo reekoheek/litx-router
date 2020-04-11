@@ -2,7 +2,8 @@ import { Context } from './context';
 import { Route } from './route';
 import { compose } from './compose';
 
-const kListener = Symbol('listener');
+const kStateListener = Symbol('state_listener');
+const kLinkListener = Symbol('link_listener');
 
 export class Router extends HTMLElement {
   constructor () {
@@ -121,23 +122,45 @@ export class Router extends HTMLElement {
   }
 
   setupListener () {
-    this[kListener] = async (evt) => {
+    this[kStateListener] = async evt => {
       const uri = this.getUri(this.location);
       await this.dispatch(new Context({ uri, state: evt.state }));
     };
 
-    window.addEventListener('popstate', this[kListener]);
+    window.addEventListener('popstate', this[kStateListener]);
+
+    this[kLinkListener] = async evt => {
+      const link = evt.target.closest('a');
+      if (!link) {
+        return;
+      }
+
+      const href = link.getAttribute('href');
+      if (href[0] !== '/') {
+        return;
+      }
+
+      evt.preventDefault();
+      await this.push(href);
+    };
+
+    window.addEventListener('click', this[kLinkListener]);
   }
 
   teardownListener () {
-    if (this[kListener]) {
-      window.removeEventListener('popstate', this[kListener]);
-      this[kListener] = undefined;
+    if (this[kStateListener]) {
+      window.removeEventListener('popstate', this[kStateListener]);
+      this[kStateListener] = undefined;
+    }
+
+    if (this[kLinkListener]) {
+      window.removeEventListener('click', this[kLinkListener]);
+      this[kLinkListener] = undefined;
     }
   }
 
   async dispatch (ctx) {
-    this.currentUri = ctx.uri;
+    this.ctx = ctx;
 
     // ctx = ctx.shift(this);
 
@@ -172,7 +195,7 @@ export class Router extends HTMLElement {
   }
 
   async push (uri, state) {
-    if (this.currentUri === uri) {
+    if (this.ctx.uri === uri) {
       return;
     }
 
@@ -183,7 +206,7 @@ export class Router extends HTMLElement {
   }
 
   async replace (uri, state) {
-    if (this.currentUri === uri) {
+    if (this.ctx.uri === uri) {
       return;
     }
 
