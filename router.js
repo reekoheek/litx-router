@@ -23,6 +23,7 @@ export class Router extends HTMLElement {
     this.location = window.location;
     this.history = window.history;
     this.hashRegexp = new RegExp(`${this.hash}(.*)$`);
+    this.defaultMarker = document.createComment('router-marker');
   }
 
   getMiddlewareChain () {
@@ -34,11 +35,6 @@ export class Router extends HTMLElement {
   }
 
   async connectedCallback () {
-    this.defaultMarker = this.defaultMarker || document.createComment('router-marker');
-    if (this.defaultMarker.parentElement !== this) {
-      this.appendChild(this.defaultMarker);
-    }
-
     this.debug = this.hasAttribute('debug');
     this.mode = this.getAttribute('mode') || this.mode;
     this.hash = this.getAttribute('hash') || this.hash;
@@ -89,6 +85,8 @@ export class Router extends HTMLElement {
     }
 
     this.started = true;
+
+    this.appendChild(this.defaultMarker);
 
     this.setupListener();
 
