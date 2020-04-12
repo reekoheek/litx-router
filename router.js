@@ -9,6 +9,8 @@ export class Router extends HTMLElement {
   constructor () {
     super();
 
+    this.middlewareSelector = '[middleware]';
+    this.routeSelector = 'litx-route';
     this.loaders = [];
     this.started = false;
     this.debug = false;
@@ -23,12 +25,30 @@ export class Router extends HTMLElement {
     this.hashRegexp = new RegExp(`${this.hash}(.*)$`);
   }
 
+  getMiddlewareChain () {
+    if (!this.middlewares.chain) {
+      this.middlewares.chain = compose(this.middlewares);
+    }
+
+    return this.middlewares.chain;
+  }
+
   async connectedCallback () {
+    this.defaultMarker = this.defaultMarker || document.createComment('router-marker');
+    if (this.defaultMarker.parentElement !== this) {
+      this.appendChild(this.defaultMarker);
+    }
+
     this.debug = this.hasAttribute('debug');
     this.mode = this.getAttribute('mode') || this.mode;
     this.hash = this.getAttribute('hash') || this.hash;
     this.root = this.getAttribute('root') || this.root;
     this.manual = this.hasAttribute('manual');
+    this.middlewareSelector = this.getAttribute('middleware-selector') || this.middlewareSelector;
+    this.routeSelector = this.getAttribute('route-selector') || this.routeSelector;
+
+    this.populateRoutes();
+    this.populateMiddlewares();
 
     if (!this.manual) {
       await this.start();
@@ -57,6 +77,7 @@ export class Router extends HTMLElement {
 
       return '/' + uri.toString().replace(/\/$/, '').replace(/^\//, '');
     } catch (err) {
+      /* istanbul ignore next  */
       console.error('Fragment is not match any pattern, fallback to /\n', err);
       return '/';
     }
@@ -69,8 +90,6 @@ export class Router extends HTMLElement {
 
     this.started = true;
 
-    this.setupRoutes();
-    this.setupMiddlewares();
     this.setupListener();
 
     const uri = this.getUri(this.location);
@@ -81,44 +100,43 @@ export class Router extends HTMLElement {
     this.started = false;
 
     this.teardownListener();
-    this.teardownMiddlewares();
-    this.teardownRoutes();
   }
 
-  setupRoutes () {
-    this.routes = [];
-    this.querySelectorAll('litx-route').forEach(route => {
+  populateRoutes () {
+    /* istanbul ignore if  */
+    if (this.routes.length) {
+      return;
+    }
+
+    this.querySelectorAll(this.routeSelector).forEach(route => {
       const uri = route.getAttribute('uri');
       const view = route.getAttribute('view');
       const marker = route;
 
+      /* istanbul ignore if  */
       if (!uri || !view) {
         throw new Error(`Malformed route ${route.outerHTML}`);
       }
 
-      this.routes.push(new Route({ router: this, uri, view, marker }));
+      this.addRoute({ uri, view, marker });
     });
   }
 
-  teardownRoutes () {
-    this.routes = [];
-  }
+  populateMiddlewares () {
+    /* istanbul ignore if  */
+    if (this.middlewares.length) {
+      return;
+    }
 
-  setupMiddlewares () {
-    this.querySelectorAll('[middleware]').forEach(mw => {
-      mw.router = this;
-      if (typeof mw.callback === 'function') {
-        this.use(mw.callback());
-      } else {
-        console.error(`Middleware: ${mw.nodeName} must implement callback()`);
+    this.querySelectorAll(this.middlewareSelector).forEach(mw => {
+      /* istanbul ignore if  */
+      if (typeof mw.callback !== 'function') {
+        throw new Error(`Middleware: ${mw.nodeName} must implement callback()`);
       }
-    });
-    this.middlewareChain = compose(this.middlewares);
-  }
 
-  teardownMiddlewares () {
-    this.middlewares = [];
-    this.middlewareChain = undefined;
+      mw.router = this;
+      this.use(mw.callback());
+    });
   }
 
   setupListener () {
@@ -165,12 +183,17 @@ export class Router extends HTMLElement {
     // ctx = ctx.shift(this);
 
     /* istanbul ignore if  */ if (this.debug) console.info(`Dispatching ${this.nodeName} with ctx: %O`, ctx);
-    await this.middlewareChain(ctx, async () => {
+    const chain = this.getMiddlewareChain();
+    await chain(ctx, async () => {
       await this.route(ctx);
     });
 
     const evt = new CustomEvent('router-dispatch', { ctx });
     this.dispatchEvent(evt);
+  }
+
+  addRoute ({ uri, view, marker = this.defaultMarker }) {
+    this.routes.push(new Route({ router: this, uri, view, marker }));
   }
 
   async route (ctx) {
@@ -233,7 +256,7 @@ export class Router extends HTMLElement {
     });
 
     if (!delta) {
-      return;
+      throw new Error('Cannot go nowhere');
     }
 
     this.history.go(delta);

@@ -1,6 +1,6 @@
 {
   "name": "litx-router",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Web Components Router",
   "main": "index.js",
   "module": "index.js",
