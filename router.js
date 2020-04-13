@@ -64,7 +64,6 @@ export class Router extends HTMLElement {
       let uri;
       if (this.mode === 'history') {
         uri = decodeURI(location.pathname + location.search);
-        uri = uri.replace(/\?(.*)$/, '');
         uri = this.root === '/' ? uri : uri.replace(this.root, '');
       } else {
         const match = location.href.match(this.hashRegexp);

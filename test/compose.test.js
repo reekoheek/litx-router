@@ -1,7 +1,7 @@
 import { compose } from '../compose';
 import { assert } from '@open-wc/testing';
 
-describe('compose', () => {
+describe('compose()', () => {
   it('accept array of functions', () => {
     compose([
       () => undefined,

@@ -13,7 +13,7 @@ const ce2 = defineCE(class extends HTMLElement {
   }
 });
 
-describe('Router', () => {
+describe('click', () => {
   beforeEach(() => {
     location.hash = '#';
   });

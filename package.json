@@ -1,6 +1,6 @@
 {
   "name": "litx-router",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Web Components Router",
   "main": "index.js",
   "module": "index.js",
@@ -24,8 +24,8 @@
   },
   "homepage": "https://github.com/reekoheek/litx-router#readme",
   "devDependencies": {
-    "@open-wc/testing": "^2.5.10",
-    "@open-wc/testing-karma": "^3.3.11",
+    "@open-wc/testing": "^2.5.11",
+    "@open-wc/testing-karma": "^3.3.12",
     "eslint": "^6.8.0",
     "eslint-config-standard": "^14.1.1",
     "eslint-config-xinix": "^1.1.13",
