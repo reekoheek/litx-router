@@ -4,10 +4,11 @@ const RouteType = {
 };
 
 export class Route {
-  constructor ({ uri, view, marker }) {
+  constructor ({ uri, view, props, marker }) {
     this.uri = uri;
     this.view = view;
     this.marker = marker;
+    this.props = props;
     this.active = false;
 
     if (isStatic(uri)) {
@@ -41,9 +42,14 @@ export class Route {
       (this.type === 'v' && uri.match(this.pattern));
   }
 
+  /**
+   * Enter focus
+   * @param {import('./context').Context} ctx
+   */
   async enter (ctx) {
     if (!this.viewElement) {
       this.viewElement = document.createElement(this.view);
+      Object.assign(this.viewElement, this.props);
     }
 
     ctx = ctx.for(this);

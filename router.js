@@ -196,8 +196,8 @@ export class Router extends HTMLElement {
    * @param {string} route.view
    * @param {Element} route.marker
    */
-  addRoute ({ uri, view, marker = this.defaultMarker }) {
-    this.routes.push(new Route({ uri, view, marker }));
+  addRoute ({ uri, view, props, marker = this.defaultMarker }) {
+    this.routes.push(new Route({ uri, view, props, marker }));
   }
 
   async route (ctx) {

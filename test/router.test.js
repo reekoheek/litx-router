@@ -1,4 +1,5 @@
 import { fixture, html, assert } from '@open-wc/testing';
+
 describe('Router', () => {
   describe('#getUri()', () => {
     it('get uri from URL', async () => {
