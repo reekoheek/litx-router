@@ -189,8 +189,15 @@ export class Router extends HTMLElement {
     this.dispatchEvent(evt);
   }
 
+  /**
+   * Add route
+   * @param {object} route Route definition
+   * @param {string} route.uri
+   * @param {string} route.view
+   * @param {Element} route.marker
+   */
   addRoute ({ uri, view, marker = this.defaultMarker }) {
-    this.routes.push(new Route({ router: this, uri, view, marker }));
+    this.routes.push(new Route({ uri, view, marker }));
   }
 
   async route (ctx) {
@@ -208,8 +215,10 @@ export class Router extends HTMLElement {
       throw new Error(`Route not found! (uri:${ctx.originalUri})`);
     }
 
+    await this.prepare(entering.view);
+
     await Promise.all([
-      entering && entering.enter(ctx),
+      entering.enter(ctx),
       leaving && leaving.leave(),
     ]);
   }
@@ -262,8 +271,18 @@ export class Router extends HTMLElement {
   }
 
   async prepare (view) {
+    if (customElements.get(view)) {
+      return;
+    }
+
+    function test (view, loader) {
+      if (loader.test === true) return true;
+      if (typeof loader.test === 'function' && loader.test(view)) return true;
+      if (loader.test instanceof RegExp && loader.test.test(view)) return true;
+    }
+
     for (const loader of this.loaders) {
-      if (loader.test(view)) {
+      if (test(view, loader)) {
         await loader.load(view);
       }
     }

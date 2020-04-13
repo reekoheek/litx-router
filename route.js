@@ -4,8 +4,7 @@ const RouteType = {
 };
 
 export class Route {
-  constructor ({ router, uri, view, marker }) {
-    this.router = router;
+  constructor ({ uri, view, marker }) {
     this.uri = uri;
     this.view = view;
     this.marker = marker;
@@ -44,21 +43,19 @@ export class Route {
 
   async enter (ctx) {
     if (!this.viewElement) {
-      await this.router.prepare(this.view);
-
       this.viewElement = document.createElement(this.view);
     }
 
     ctx = ctx.for(this);
 
     this.viewElement.ctx = ctx;
-    this.marker.parentElement.insertBefore(this.viewElement, this.marker);
+    await this.marker.parentElement.insertBefore(this.viewElement, this.marker);
     this.active = true;
   }
 
-  leave () {
+  async leave () {
     this.active = false;
-    this.marker.parentElement.removeChild(this.viewElement);
+    await this.marker.parentElement.removeChild(this.viewElement);
     delete this.viewElement;
   }
 }

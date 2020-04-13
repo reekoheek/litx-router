@@ -1,48 +1,26 @@
 const { URL } = window;
 
 export class Context {
-  constructor (ctx) {
-    if (ctx instanceof Context) {
-      this.originalUri = ctx.originalUri;
-      this.uri = ctx.uri;
-      this.pathname = ctx.pathname;
-      this.search = ctx.search;
-      this.query = ctx.query;
-    } else {
-      this.originalUri = ctx.originalUri || ctx.uri;
-      this._setUri(ctx.uri);
-    }
-
-    this.state = { ...ctx.state };
-    this.parameters = { ...ctx.parameters };
-  }
-
-  _setUri (uri) {
+  constructor ({ uri, state, originalUri = uri, pathname, search, query, parameters }) {
+    this.originalUri = originalUri;
     this.uri = uri;
-    let { pathname, search } = new URL(uri, 'http://localhost');
-    if (search[0] === '?') {
-      search = search.substr(1);
+
+    if (pathname === undefined) {
+      const url = new URL(uri, 'http://localhost');
+      pathname = url.pathname;
+      if (url.search[0] === '?') {
+        search = url.search.substr(1);
+      }
+      query = parse(search);
     }
 
     this.pathname = pathname;
     this.search = search;
-    this.query = parse(search);
+    this.query = query;
+
+    this.parameters = { ...parameters };
+    this.state = { ...state };
   }
-
-  // withUri (uri) {
-  //   const ctx = new Context(this);
-  //   ctx._setUri(uri);
-  //   return ctx;
-  // }
-
-  // shift (router) {
-  //   const { uri } = this;
-  //   if (!uri.startsWith(router.root)) {
-  //     throw new Error(`Context not eligible for ${router.nodeName} with root:${router.root}`);
-  //   }
-
-  //   return this.withUri(router.root === '/' ? uri : uri.substr(router.root.length));
-  // }
 
   /**
    * Copy context for specific route
