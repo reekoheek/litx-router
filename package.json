@@ -1,13 +1,16 @@
 {
   "name": "litx-router",
-  "version": "1.0.7",
+  "version": "2.0.0",
   "description": "Web Components Router",
   "main": "index.js",
-  "module": "index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "karma start --coverage",
-    "test:watch": "karma start --auto-watch=true --single-run=false",
-    "lint": "eslint ."
+    "prepublish": "tsc",
+    "build": "tsc",
+    "test": "wtr ./dist/**/*.test.js --node-resolve",
+    "lint": "eslint .",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -24,24 +27,15 @@
   },
   "homepage": "https://github.com/reekoheek/litx-router#readme",
   "devDependencies": {
-    "@open-wc/testing": "^2.5.11",
-    "@open-wc/testing-karma": "^3.3.12",
-    "eslint": "^6.8.0",
-    "eslint-config-standard": "^14.1.1",
+    "@open-wc/testing": "^3.0.0-next.2",
+    "@web/test-runner": "^0.13.11",
+    "eslint": "^7.28.0",
     "eslint-config-xinix": "^1.1.13",
-    "eslint-plugin-import": "^2.20.2",
-    "eslint-plugin-mocha": "^6.3.0",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^4.0.1",
-    "husky": "^4.2.5",
-    "karma": "^5.0.1",
-    "lit-html": "^1.2.1"
+    "husky": "^7.0.1",
+    "lint-staged": "^11.0.0",
+    "lit": "^2.0.0-rc.2"
   },
-  "dependencies": {},
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm run lint && npm test"
-    }
+  "lint-staged": {
+    "*.ts": "eslint"
   }
 }
