@@ -1,12 +1,13 @@
 {
   "name": "litx-router",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Web Components Router",
   "main": "index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prepublish": "tsc",
+    "prepublish": "npm run clean; npm run build",
+    "clean": "rm -rf dist/",
     "build": "tsc",
     "test": "wtr ./dist/**/*.test.js --node-resolve",
     "lint": "eslint .",

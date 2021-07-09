@@ -157,6 +157,7 @@ function handleClick (evt: Event) {
     evt.preventDefault();
     const { mode } = getState().config;
     const parsed = parseLocation(target, mode);
+    history.pushState(null, '', target.href);
     const ctx = { ...parsed };
     fireEvent(ctx);
   } catch (err) {
@@ -309,6 +310,10 @@ export function configure (config: Partial<Config> = {}) {
 
 export function reset () {
   deinitState();
+}
+
+export function define (name = 'litx-router') {
+  customElements.define(name, router()(class LitxRouter extends HTMLElement {}));
 }
 
 function toURLString (uri: string, mode: Mode): string {

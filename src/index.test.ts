@@ -14,13 +14,14 @@ import {
   Routes,
   Router,
   router,
+  define,
 } from './index';
 
 describe('litx-router', () => {
   beforeEach(() => {
     debug(true);
     reset();
-    history.replaceState('', '', '#');
+    history.replaceState(null, '', '#');
   });
 
   afterEach(() => {
@@ -88,6 +89,27 @@ describe('litx-router', () => {
     });
   });
 
+  describe('event: click', () => {
+    it('push to location and dispatch', async () => {
+      history.replaceState(null, '', '#!/1');
+      history.pushState(null, '', '#!/2');
+      debug({
+        routerDispatchEventListener: () => undefined,
+      });
+      configure({ mode: 'hash' });
+      const el = await fixture(html`<a href="#!/foo">click</a>`);
+      const dispatched = waitFor(window, 'router-dispatch');
+      el.dispatchEvent(new CustomEvent('click', { bubbles: true }));
+      await dispatched;
+      assert.strictEqual(location.hash, '#!/foo');
+      const navigated = waitFor(window, 'popstate');
+      history.back();
+      await navigated;
+      assert.strictEqual(location.hash, '#!/2');
+      history.replaceState(null, '', '#');
+    });
+  });
+
   describe('event: router-dispatch', () => {
     it('dispatch to all registered dispatchers', () => {
       const logs: number[] = [];
@@ -109,8 +131,8 @@ describe('litx-router', () => {
 
   describe('push()', () => {
     it('push history', async () => {
-      history.replaceState('', '', '#!/1');
-      history.pushState('', '', '#!/2');
+      history.replaceState(null, '', '#!/1');
+      history.pushState(null, '', '#!/2');
       configure({ mode: 'hash' });
       await push('/foo');
       assert.strictEqual(location.hash, '#!/foo');
@@ -123,8 +145,8 @@ describe('litx-router', () => {
 
   describe('replace()', () => {
     it('push history', async () => {
-      history.replaceState('', '', '#!/1');
-      history.pushState('', '', '#!/2');
+      history.replaceState(null, '', '#!/1');
+      history.pushState(null, '', '#!/2');
       configure({ mode: 'hash' });
       await replace('/foo');
       assert.strictEqual(location.hash, '#!/foo');
@@ -137,8 +159,8 @@ describe('litx-router', () => {
 
   describe('go()', () => {
     it('go back and forth in history', async () => {
-      history.replaceState('', '', '#!/1');
-      history.pushState('', '', '#!/2');
+      history.replaceState(null, '', '#!/1');
+      history.pushState(null, '', '#!/2');
       configure({ mode: 'hash' });
       await go(-1);
       assert.strictEqual(location.hash, '#!/1');
@@ -499,6 +521,20 @@ describe('litx-router', () => {
       assert.notStrictEqual(el.querySelector('x-foo'), null);
     });
   });
+
+  describe('define()', () => {
+    it('define new router custom elements with default name', () => {
+      define();
+      const Element = customElements.get('litx-router');
+      assert.notStrictEqual(Element, undefined);
+    });
+
+    it('define new router custom elements with specified name', () => {
+      define('x-router-defined');
+      const Element = customElements.get('x-router-defined');
+      assert.notStrictEqual(Element, undefined);
+    });
+  });
 });
 
 class HRouter extends router()(HTMLElement) {}
@@ -520,4 +556,8 @@ function waitFor (target: EventTarget, name: string, timeoutLength = 500): Promi
     };
     target.addEventListener(name, handle);
   });
+}
+
+function sleep (t = 300): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, t));
 }
