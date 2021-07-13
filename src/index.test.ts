@@ -14,7 +14,6 @@ import {
   Routes,
   Router,
   router,
-  define,
 } from './index';
 
 describe('litx-router', () => {
@@ -488,14 +487,14 @@ describe('litx-router', () => {
           <div>
             <div outlet id="outlet"></div>
           </div>
-          <div>
-            <template route path="/" template="x-foo"></template>
-            <template route path="/bar">
-              <x-bar></x-bar>
-            </template>
-          </div>
-          <div>
-            <x-m middleware .callback="${mw}"></x-m>
+          <template route path="/" template="x-foo"></template>
+          <template route path="/bar">
+            <x-bar></x-bar>
+          </template>
+          <x-m middleware .callback="${mw}"></x-m>
+          <div class="excluded">
+            <template route path="/foo" template="x-foo-excluded"></template>
+            ,<x-m middleware .callback="${mw}"></x-m>
           </div>
         </h-router>
       `);
@@ -510,29 +509,13 @@ describe('litx-router', () => {
           <div>
             <div outlet id="outlet"></div>
           </div>
-          <div>
-            <template route path="/" template="x-foo"></template>
-            <template route path="/bar">
-              <x-bar></x-bar>
-            </template>
-          </div>
+          <template route path="/" template="x-foo"></template>
+          <template route path="/bar">
+            <x-bar></x-bar>
+          </template>
         </h-router>
       `);
       assert.notStrictEqual(el.querySelector('x-foo'), null);
-    });
-  });
-
-  describe('define()', () => {
-    it('define new router custom elements with default name', () => {
-      define();
-      const Element = customElements.get('litx-router');
-      assert.notStrictEqual(Element, undefined);
-    });
-
-    it('define new router custom elements with specified name', () => {
-      define('x-router-defined');
-      const Element = customElements.get('x-router-defined');
-      assert.notStrictEqual(Element, undefined);
     });
   });
 });
@@ -556,8 +539,4 @@ function waitFor (target: EventTarget, name: string, timeoutLength = 500): Promi
     };
     target.addEventListener(name, handle);
   });
-}
-
-function sleep (t = 300): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, t));
 }

@@ -72,7 +72,6 @@ interface Constructor<T> {
 }
 
 interface MaybeCustomeElement extends HTMLElement {
-  renderRoot?: Element | DocumentFragment;
   connectedCallback?(): void;
 }
 
@@ -234,7 +233,7 @@ export function replace (uri: string, state?: unknown): Promise<void> {
   return Promise.resolve();
 }
 
-export async function go (delta?: number): Promise<void> {
+export async function go (delta: number): Promise<void> {
   const triggered = waitFor(window, 'popstate');
   history.go(delta);
   await triggered;
@@ -289,14 +288,14 @@ function getState (): State {
   throw new Error('uninitialized router global state');
 }
 
-export function inspect () {
+export function inspect (): State | undefined {
   if (!globalDebug) {
     throw new Error('disable inspect without debug');
   }
   return globalState;
 }
 
-export function configure (config: Partial<Config> = {}) {
+export function configure (config: Partial<Config> = {}): void {
   if (!globalState) {
     globalState = initState();
   }
@@ -308,12 +307,8 @@ export function configure (config: Partial<Config> = {}) {
   state.ctx = parseLocation(location, state.config.mode);
 }
 
-export function reset () {
+export function reset (): void {
   deinitState();
-}
-
-export function define (name = 'litx-router') {
-  customElements.define(name, router()(class LitxRouter extends HTMLElement {}));
 }
 
 function toURLString (uri: string, mode: Mode): string {
@@ -382,11 +377,11 @@ function isVary (path: string) {
 export class Middlewares {
   middlewares: Middleware[] = [];
 
-  get length () {
+  get length (): number {
     return this.middlewares.length;
   }
 
-  push (...middlewares: Middleware[]) {
+  push (...middlewares: Middleware[]): void {
     this.middlewares.push(...middlewares);
   }
 
@@ -453,11 +448,11 @@ function createContextWithSegmentParams (ctx: Context, route: Route): Context {
 export class Routes {
   routes: Route[] = [];
 
-  get length () {
+  get length (): number {
     return this.routes.length;
   }
 
-  push (...routes: RouteDef[]) {
+  push (...routes: RouteDef[]): void {
     routes.forEach(r => this.routes.push(toRoute(r)));
   }
 
@@ -516,14 +511,14 @@ export class Router implements Dispatcher {
     this.route(...routes);
   }
 
-  listen () {
+  listen (): void {
     if (!globalState) {
       configure();
     }
     addDispatcher(this);
   }
 
-  unlisten () {
+  unlisten (): void {
     removeDispatcher(this);
   }
 
@@ -549,14 +544,22 @@ export class Router implements Dispatcher {
   }
 }
 
-function findRoutes (root: Element | DocumentFragment): RouteDef[] {
-  const resolveRoute = getState().config.routeResolver;
-  return [...root.querySelectorAll('[route]')].map(el => resolveRoute(el));
-}
+function findRoutesAndMiddlewares (root: Element | DocumentFragment): [ RouteDef[], Middleware[] ] {
+  const { routeResolver, middlewareResolver } = getState().config;
+  const routes: RouteDef[] = [];
+  const mws: Middleware[] = [];
+  let child = root.firstElementChild;
+  while (child) {
+    if (child.hasAttribute('route')) {
+      routes.push(routeResolver(child));
+    }
 
-function findMiddlewares (root: Element | DocumentFragment): Middleware[] {
-  const resolveMiddleware = getState().config.middlewareResolver;
-  return [...root.querySelectorAll('[middleware]')].map(el => resolveMiddleware(el));
+    if (child.hasAttribute('middleware')) {
+      mws.push(middlewareResolver(child));
+    }
+    child = child.nextElementSibling;
+  }
+  return [routes, mws];
 }
 
 function defaultRouteResolver (el: Element): RouteDef {
@@ -579,13 +582,17 @@ function defaultMiddlewareResolver (el: Element): Middleware {
   throw new Error('malformed middleware');
 }
 
+interface WithRouter {
+  router?: Router;
+}
+
 export function router (opts: Partial<Options> = {}) {
-  return function <TBase extends Constructor<MaybeCustomeElement>> (Base: TBase) {
+  return function <TBase extends Constructor<MaybeCustomeElement>> (Base: TBase): TBase & Constructor<WithRouter> {
     return class extends Base {
       router?: Router;
 
       get routerRoot (): Element | DocumentFragment {
-        return this.renderRoot ?? this;
+        return this.shadowRoot ?? this;
       }
 
       connectedCallback () {
@@ -597,9 +604,8 @@ export function router (opts: Partial<Options> = {}) {
         }
         const outlet = this.routerRoot.querySelector('[outlet]') ?? this;
         this.router = new Router(outlet, opts);
-        const routes = findRoutes(this.routerRoot);
+        const [routes, mws] = findRoutesAndMiddlewares(this.routerRoot);
         this.router.route(...routes);
-        const mws = findMiddlewares(this.routerRoot);
         this.router.use(...mws);
         if (this.hasAttribute('listen')) {
           this.router.listen();
@@ -608,6 +614,38 @@ export function router (opts: Partial<Options> = {}) {
     };
   };
 }
+
+interface Navigator {
+  push (path: string, state: unknown): Promise<void>;
+  replace (path: string, state: unknown): Promise<void>;
+  pop (): Promise<void>;
+  go (delta: number): Promise<void>;
+}
+
+export function navigator () {
+  return function <TBase extends Constructor<MaybeCustomeElement>> (Base: TBase): TBase & Constructor<Navigator> {
+    return class extends Base {
+      push (path: string, state: unknown): Promise<void> {
+        return push(path, state);
+      }
+
+      replace (path: string, state: unknown): Promise<void> {
+        return replace(path, state);
+      }
+
+      pop (): Promise<void> {
+        return pop();
+      }
+
+      go (delta: number): Promise<void> {
+        return go(delta);
+      }
+    };
+  };
+}
+
+class LitxRouter extends navigator()(router()(HTMLElement)) {}
+customElements.define('litx-router', LitxRouter);
 
 function waitFor (target: EventTarget, name: string, timeoutLength = 500): Promise<Event> {
   return new Promise<Event>((resolve, reject) => {
