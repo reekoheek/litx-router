@@ -73,12 +73,17 @@ interface Constructor<T> {
 
 interface MaybeCustomeElement extends HTMLElement {
   connectedCallback?(): void;
+  disconnectedCallback?(): void;
 }
 
 interface Options {
   readonly basePath: string;
   readonly middlewares: Middleware[];
   readonly routes: RouteDef[];
+}
+
+interface MixinOptions extends Options {
+  readonly listen: boolean;
 }
 
 interface Dispatcher {
@@ -99,6 +104,7 @@ interface MiddlewareResolver {
 
 interface Config {
   readonly mode: Mode;
+  readonly delay: number;
   readonly routeResolver: RouteResolver;
   readonly middlewareResolver: MiddlewareResolver;
 }
@@ -259,6 +265,7 @@ function initState (): State {
   globalState = {
     config: {
       mode: 'history',
+      delay: 300,
       routeResolver: defaultRouteResolver,
       middlewareResolver: defaultMiddlewareResolver,
     },
@@ -519,6 +526,9 @@ export class Router implements Dispatcher {
   }
 
   unlisten (): void {
+    if (!globalState) {
+      return;
+    }
     removeDispatcher(this);
   }
 
@@ -582,14 +592,16 @@ function defaultMiddlewareResolver (el: Element): Middleware {
   throw new Error('malformed middleware');
 }
 
-interface WithRouter {
+interface IRouterElement {
   router?: Router;
+  routerReady?: Promise<void>;
 }
 
-export function router (opts: Partial<Options> = {}) {
-  return function <TBase extends Constructor<MaybeCustomeElement>> (Base: TBase): TBase & Constructor<WithRouter> {
+export function router (opts: Partial<MixinOptions> = {}) {
+  return function <TBase extends Constructor<MaybeCustomeElement>> (Base: TBase): TBase & Constructor<IRouterElement> {
     return class extends Base {
       router?: Router;
+      routerReady?: Promise<void>;
 
       get routerRoot (): Element | DocumentFragment {
         return this.shadowRoot ?? this;
@@ -599,16 +611,42 @@ export function router (opts: Partial<Options> = {}) {
         if (super.connectedCallback) {
           super.connectedCallback();
         }
+        this.routerReady = this.__enableRouter();
+      }
+
+      disconnectedCallback () {
+        if (super.disconnectedCallback) {
+          super.disconnectedCallback();
+        }
+        this.__disableRouter();
+      }
+
+      __enableRouter (): Promise<void> {
         if (!globalState) {
           configure();
         }
-        const outlet = this.routerRoot.querySelector('[outlet]') ?? this;
-        this.router = new Router(outlet, opts);
-        const [routes, mws] = findRoutesAndMiddlewares(this.routerRoot);
-        this.router.route(...routes);
-        this.router.use(...mws);
-        if (this.hasAttribute('listen')) {
-          this.router.listen();
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            const outlet = this.routerRoot.querySelector('[outlet]') ?? this;
+            this.router = new Router(outlet, opts);
+            const [routes, mws] = findRoutesAndMiddlewares(this.routerRoot);
+            this.router.route(...routes);
+            this.router.use(...mws);
+            if (opts.listen || this.hasAttribute('listen')) {
+              this.router.listen();
+            }
+            resolve();
+          }, getState().config.delay);
+        });
+      }
+
+      async __disableRouter () {
+        await this.routerReady;
+        if (!globalState) {
+          return;
+        }
+        if (this.router) {
+          this.router.unlisten();
         }
       }
     };
@@ -644,8 +682,8 @@ export function navigator () {
   };
 }
 
-class LitxRouter extends navigator()(router()(HTMLElement)) {}
-customElements.define('litx-router', LitxRouter);
+export class RouterElement extends navigator()(router()(HTMLElement)) {}
+customElements.define('litx-router', RouterElement);
 
 function waitFor (target: EventTarget, name: string, timeoutLength = 500): Promise<Event> {
   return new Promise<Event>((resolve, reject) => {

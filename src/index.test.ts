@@ -14,6 +14,7 @@ import {
   Routes,
   Router,
   router,
+  RouterElement,
 } from './index';
 
 describe('litx-router', () => {
@@ -474,6 +475,7 @@ describe('litx-router', () => {
       const el: XRouter = await fixture(html`
         <x-router-1></x-router-1>
       `);
+      await el.routerReady;
       assert.strictEqual((el.router?.outlet as Outlet).host, el);
       assert.strictEqual(el.router?.basePath, '/foo');
       assert.strictEqual(el.router?.routes.length, 1);
@@ -482,8 +484,8 @@ describe('litx-router', () => {
 
     it('define outlet, routes and middlewares from children', async () => {
       const mw = () => Promise.resolve();
-      const el: HRouter = await fixture(html`
-        <h-router>
+      const el: RouterElement = await fixture(html`
+        <litx-router>
           <div>
             <div outlet id="outlet"></div>
           </div>
@@ -496,32 +498,15 @@ describe('litx-router', () => {
             <template route path="/foo" template="x-foo-excluded"></template>
             ,<x-m middleware .callback="${mw}"></x-m>
           </div>
-        </h-router>
+        </litx-router>
       `);
+      await el.routerReady;
       assert.strictEqual((el.router?.outlet as Outlet).host, el.querySelector('#outlet'));
       assert.strictEqual(el.router?.routes.length, 2);
       assert.strictEqual(el.router?.middlewares.length, 1);
     });
-
-    it('listen if has attribute listen', async () => {
-      const el: HRouter = await fixture(html`
-        <h-router listen>
-          <div>
-            <div outlet id="outlet"></div>
-          </div>
-          <template route path="/" template="x-foo"></template>
-          <template route path="/bar">
-            <x-bar></x-bar>
-          </template>
-        </h-router>
-      `);
-      assert.notStrictEqual(el.querySelector('x-foo'), null);
-    });
   });
 });
-
-class HRouter extends router()(HTMLElement) {}
-customElements.define('h-router', HRouter);
 
 function waitFor (target: EventTarget, name: string, timeoutLength = 500): Promise<Event> {
   return new Promise<Event>((resolve, reject) => {
