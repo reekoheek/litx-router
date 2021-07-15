@@ -260,7 +260,7 @@ function initState (): State {
   globalState = {
     config: {
       mode: 'history',
-      delay: 300,
+      delay: 0,
       routeResolver: defaultRouteResolver,
       middlewareResolver: defaultMiddlewareResolver,
     },
