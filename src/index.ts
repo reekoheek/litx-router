@@ -68,7 +68,7 @@ interface WithMiddlewareCallback {
 }
 
 interface Constructor<T> {
-  new(...args: any[]): T; // eslint-disable-line @typescript-eslint/no-explicit-any
+  new (...args: any[]): T; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 interface MaybeCustomeElement extends HTMLElement {
@@ -91,7 +91,7 @@ interface Dispatcher {
 }
 
 interface IOutlet {
-  render(route: Route, ctx: Context): Promise<void>;
+  render (route: Route, ctx: Context): Promise<void>;
 }
 
 interface RouteResolver {
@@ -137,8 +137,7 @@ function handlePopState (evt: PopStateEvent) {
     return;
   }
   try {
-    const { mode } = getState().config;
-    const parsed = parseLocation(location, mode);
+    const parsed = parseLocation(location, getState().config.mode);
     const ctx = { ...parsed, state: evt.state };
     fireEvent(ctx);
   } catch (err) {
@@ -160,8 +159,7 @@ function handleClick (evt: Event) {
       return;
     }
     evt.preventDefault();
-    const { mode } = getState().config;
-    const parsed = parseLocation(target, mode);
+    const parsed = parseLocation(target, getState().config.mode);
     history.pushState(null, '', target.href);
     const ctx = { ...parsed };
     fireEvent(ctx);
@@ -208,13 +206,12 @@ async function tryDispatch (dispatcher: Dispatcher, ctx: Context) {
 }
 
 function addDispatcher (dispatcher: Dispatcher) {
-  const { dispatchers, ctx } = getState();
+  const { dispatchers } = getState();
   const index = dispatchers.indexOf(dispatcher);
   if (index !== -1) {
     return;
   }
   dispatchers.push(dispatcher);
-  tryDispatch(dispatcher, ctx);
 }
 
 function removeDispatcher (dispatcher: Dispatcher) {
@@ -226,15 +223,13 @@ function removeDispatcher (dispatcher: Dispatcher) {
 }
 
 export function push (uri: string, state?: unknown): Promise<void> {
-  const { mode } = getState().config;
-  history.pushState(state, '', toURLString(uri, mode));
+  history.pushState(state, '', toURLString(uri, getState().config.mode));
   fireEvent({ ...parseURI(uri), state });
   return Promise.resolve();
 }
 
 export function replace (uri: string, state?: unknown): Promise<void> {
-  const { mode } = getState().config;
-  history.replaceState(state, '', toURLString(uri, mode));
+  history.replaceState(state, '', toURLString(uri, getState().config.mode));
   fireEvent({ ...parseURI(uri), state });
   return Promise.resolve();
 }
@@ -278,7 +273,7 @@ function initState (): State {
   return globalState;
 }
 
-function deinitState () {
+function uninitState () {
   if (!globalState) {
     return;
   }
@@ -315,7 +310,7 @@ export function configure (config: Partial<Config> = {}): void {
 }
 
 export function reset (): void {
-  deinitState();
+  uninitState();
 }
 
 function toURLString (uri: string, mode: Mode): string {
@@ -518,11 +513,13 @@ export class Router implements Dispatcher {
     this.route(...routes);
   }
 
-  listen (): void {
+  async listen (): Promise<void> {
     if (!globalState) {
       configure();
     }
     addDispatcher(this);
+    const { ctx } = getState();
+    await this.dispatch(ctx);
   }
 
   unlisten (): void {
@@ -593,14 +590,14 @@ function defaultMiddlewareResolver (el: Element): Middleware {
 }
 
 interface IRouterElement {
-  router?: Router;
+  readonly router: Router;
   routerReady?: Promise<void>;
 }
 
 export function router (opts: Partial<MixinOptions> = {}) {
   return function <TBase extends Constructor<MaybeCustomeElement>> (Base: TBase): TBase & Constructor<IRouterElement> {
     return class extends Base {
-      router?: Router;
+      router!: Router;
       routerReady?: Promise<void>;
 
       get routerRoot (): Element | DocumentFragment {
@@ -621,23 +618,19 @@ export function router (opts: Partial<MixinOptions> = {}) {
         this.__disableRouter();
       }
 
-      __enableRouter (): Promise<void> {
+      async __enableRouter (): Promise<void> {
         if (!globalState) {
           configure();
         }
-        return new Promise((resolve) => {
-          setTimeout(() => {
-            const outlet = this.routerRoot.querySelector('[outlet]') ?? this;
-            this.router = new Router(outlet, opts);
-            const [routes, mws] = findRoutesAndMiddlewares(this.routerRoot);
-            this.router.route(...routes);
-            this.router.use(...mws);
-            if (opts.listen || this.hasAttribute('listen')) {
-              this.router.listen();
-            }
-            resolve();
-          }, getState().config.delay);
-        });
+        await sleep(getState().config.delay);
+        const outlet = this.routerRoot.querySelector('[outlet]') ?? this;
+        this.router = new Router(outlet, opts);
+        const [routes, mws] = findRoutesAndMiddlewares(this.routerRoot);
+        this.router.route(...routes);
+        this.router.use(...mws);
+        if (opts.listen || this.hasAttribute('listen')) {
+          await this.router.listen();
+        }
       }
 
       async __disableRouter () {
@@ -685,6 +678,17 @@ export function navigator () {
 export class RouterElement extends navigator()(router()(HTMLElement)) {}
 customElements.define('litx-router', RouterElement);
 
+interface LoadFn {
+  (template: string, ctx: Context): Promise<unknown>;
+}
+
+export function lazy (template: string, load: LoadFn): FunctionTemplate {
+  return async (ctx: Context) => {
+    await load(template, ctx);
+    return template;
+  };
+}
+
 function waitFor (target: EventTarget, name: string, timeoutLength = 500): Promise<Event> {
   return new Promise<Event>((resolve, reject) => {
     function clean () {
@@ -701,4 +705,8 @@ function waitFor (target: EventTarget, name: string, timeoutLength = 500): Promi
     };
     target.addEventListener(name, handle);
   });
+}
+
+function sleep (t = 0): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, t));
 }
