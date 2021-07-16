@@ -1,5 +1,7 @@
 # litx-router
 
+> litx-router is now part of the [xlit monorepo](https://github.com/reekoheek/xlit) (@xlit/router)
+
 Vanilla router custom element with multiple routes and middlewares.
 
 ## Installation
